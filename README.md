@@ -1,250 +1,96 @@
 # public-utility-regression-model
-H&S Revenue Forecasting with Seasonal Regression
+# Revenue Forecasting — H&S (Hotazel Steam)
 
-Project Overview
+Two seasonal regression models built to forecast monthly revenue for H&S, using seasonal dummy variables and interaction terms. Models are trained on 2011–2013 data and tested on held-out 2014 data, then compared on out-of-sample forecast accuracy (MAPE) and in-sample fit (adjusted R²).
 
-This project develops and compares two multiple linear regression models for forecasting monthly revenue at H&S (Hotazel Steam).
+## Overview
 
-The analysis examines whether the relationship between production and revenue changes across seasons. Seasonal dummy variables and interaction terms are used to allow both the regression intercept and the effect of production on revenue to differ during winter and summer.
+H&S sells steam whose demand is highly seasonal — heating in winter, cooling in summer. A single regression line on `production` alone can't capture this. This project builds dummy variables and interaction terms so that each season can have its own **intercept** (baseline revenue) and its own **slope** (how strongly production converts to revenue), then picks the model that forecasts 2014 best.
 
-The models are trained using monthly observations from 2011 to 2013 and evaluated using 2014 holdout data.
+## Data
 
-Business Objective
+`AICPA_regressionAnalysisData.csv` — 48 monthly observations (2011–2014).
 
-The objective is to identify a forecasting model that:
+| Column | Description |
+|---|---|
+| `type` | `dt4training` (2011–2013) or `dt4testing` (2014) |
+| `date` | Month-end date |
+| `revenue` | Monthly revenue (target) |
+| `production` | Units produced |
+| `coolDD` | Cooling degree days |
+| `heatDD` | Heating degree days |
 
-Captures the seasonal nature of H&S's operations
+The 2011–2013 rows are used to fit the models; 2014 is held out to measure forecast accuracy on data the models never saw.
 
-Explains how production translates into revenue during different seasons
+## Approach
 
-Produces accurate out-of-sample revenue forecasts
+1. **Dummy variables** — `winter_DV` = 1 in Dec/Jan/Feb, `summer_DV` = 1 in Jun/Jul/Aug, 0 otherwise. A dummy shifts the intercept for that season.
+2. **Interaction terms** — `production × dummy`, so each season can also change the slope on production.
+3. **Fit, forecast, compare** — build two models, forecast 2014 revenue with each, and compare using MAPE and adjusted R².
 
-Can support management's planning and forecasting process
+## Models
 
-Dataset
+**Model 1 — winter only**
 
-The analysis uses AICPA_regressionAnalysisData.csv.
+```
+revenue = β0 + β1·production + β2·winter_DV + β3·winter_interaction
+```
 
-The dataset contains monthly observations with the following variables:
+**Model 2 — winter + summer** (recommended)
 
-Variable
+```
+revenue = β0 + β1·production + β2·winter_DV + β3·summer_DV
+             + β4·winter_interaction + β5·summer_interaction
+```
 
-Description
+Model 2 fitted equation (spring/fall is the baseline):
 
-type
+- Spring/Fall: `revenue = 4,060,734.59 + 18.87·production`
+- Winter: `revenue = 5,427,514.34 + 27.67·production`
+- Summer: `revenue = 5,452,753.63 + 12.59·production`
 
-Identifies each row as training or testing data
+Interpretation: each unit of production earns the most in winter (27.67), a baseline amount in spring/fall (18.87), and the least in summer (12.59) — consistent with winter steam serving high-value heating demand.
 
-date
+## Results
 
-Month-end date
+| Model | Adjusted R² | MAPE (2014) |
+|---|---|---|
+| Model 1: production + winter | 0.75 | 0.159 |
+| Model 2: production + winter + summer | 0.76 | 0.149 |
 
-revenue
+**Model 2 is recommended** — lower forecast error (~14.9% vs ~15.9%) and higher adjusted R². Adding the summer terms improves out-of-sample accuracy.
 
-Monthly revenue
+> Note: these figures are read directly from the notebook output and reflect this specific dataset/split. Re-run the notebook to reproduce them.
 
-production
+## Requirements
 
-Monthly production volume
-
-coolDD
-
-Cooling degree days
-
-heatDD
-
-Heating degree days
-
-The data is divided into:
-
-Training set: 2011-2013
-
-Testing set: 2014
-
-The 2014 observations are not used to estimate the models. They are reserved to evaluate forecast accuracy on unseen data.
-
-Methodology
-
-1. Data preparation
-
-The notebook:
-
-Imports the required Python libraries
-
-Loads the CSV dataset
-
-Converts the date column to a datetime format
-
-Separates the training and testing observations
-
-2. Seasonal dummy variables
-
-Two binary variables are created:
-
-winter_DV = 1 for December, January, and February
-
-summer_DV = 1 for June, July, and August
-
-Spring and fall serve as the baseline period when both dummy variables equal zero.
-
-3. Interaction terms
-
-The following interaction terms are created:
-
-winter_interaction = production * winter_DV
-summer_interaction = production * summer_DV
-
-A seasonal dummy changes the intercept of the regression equation. An interaction term allows the slope on production to change during that season.
-
-Models
-
-Model 1: Winter-adjusted model
-
-Model 1 includes:
-
-Production
-
-Winter dummy variable
-
-Winter-production interaction
-
-The estimated equation is:
-
-Revenue = 5,629,257.08
-          + 13.51(Production)
-          - 201,742.73(Winter)
-          + 14.16(Production x Winter)
-
-This produces two seasonal relationships:
-
-Non-winter:
-Revenue = 5,629,257.08 + 13.51(Production)
-
-Winter:
-Revenue = 5,427,514.35 + 27.67(Production)
-
-Model 2: Winter- and summer-adjusted model
-
-Model 2 includes:
-
-Production
-
-Winter dummy variable
-
-Summer dummy variable
-
-Winter-production interaction
-
-Summer-production interaction
-
-The estimated equation is:
-
-Revenue = 4,060,734.59
-          + 18.87(Production)
-          + 1,366,779.75(Winter)
-          + 1,392,019.04(Summer)
-          + 8.80(Production x Winter)
-          - 6.28(Production x Summer)
-
-This produces three seasonal relationships:
-
-Spring/Fall:
-Revenue = 4,060,734.59 + 18.87(Production)
-
-Winter:
-Revenue = 5,427,514.34 + 27.67(Production)
-
-Summer:
-Revenue = 5,452,753.63 + 12.59(Production)
-
-The results indicate that an additional unit of production is associated with the most revenue during winter and the least revenue during summer.
-
-Model Evaluation
-
-The models are compared using:
-
-Adjusted R-squared: Measures how much variation in training-period revenue is explained while accounting for the number of predictors
-
-Mean Absolute Percentage Error (MAPE): Measures average forecast error on the 2014 testing data
-
-Model
-
-Adjusted R-squared
-
-Test MAPE
-
-Model 1
-
-0.752
-
-15.90%
-
-Model 2
-
-0.757
-
-14.88%
-
-Recommendation
-
-Model 2 is the recommended forecasting model.
-
-It performs better on both evaluation measures:
-
-Higher adjusted R-squared
-
-Lower out-of-sample MAPE
-
-Adding summer variables improves the model because the effect of production on revenue is not constant throughout the year. Model 2 captures separate winter, summer, and spring/fall revenue relationships.
-
-Although the improvement is moderate, Model 2 provides a more complete representation of H&S's seasonal business activity and produces more accurate forecasts for the 2014 testing period.
-
-Visualizations
-
-The notebook includes:
-
-A comparison of actual 2014 revenue against forecasts from both models
-
-Seasonal regression lines for the recommended model
-
-Separate winter, summer, and spring/fall production-revenue relationships
-
-Technologies Used
-
-Python
-
-Google Colab
-
+```
+numpy
 pandas
-
-NumPy
-
+matplotlib
 statsmodels
+```
 
-Matplotlib
+Install with:
 
-Repository Structure
+```bash
+pip install numpy pandas matplotlib statsmodels
+```
 
-.
-├── Quiz_8.ipynb
-├── AICPA_regressionAnalysisData.csv
-└── README.md
+## Usage
 
-How to Run
+1. Place `AICPA_regressionAnalysisData.csv` in the same directory as the notebook.
+2. Open `Quiz 8.ipynb` in Jupyter or Google Colab.
+3. Run all cells top to bottom to reproduce the data prep, both models, the forecast comparison, and the plots.
 
-Clone the repository:
+## Notebook structure
 
-git clone <your-repository-url>
-cd <your-repository-name>
-
-Install the required packages:
-
-pip install pandas numpy matplotlib statsmodels
-
-Confirm that AICPA_regressionAnalysisData.csv is stored in the same directory as the notebook.
-
-Open and run Quiz_8.ipynb using Google Colab or Jupyter Notebook.
-
-Key Takeaway
-
-The analysis shows that seasonal conditions change how production translates into revenue. Allowing both the intercept and production slope to vary by season improves forecast accuracy and gives management a clearer view of H&S's monthly revenue patterns.
+- **Step 1** — Import libraries and load the data
+- **Step 2** — Convert the date column to datetime and extract the month
+- **Step 3** — Create the seasonal dummy variables
+- **Step 4** — Create the production × dummy interaction terms
+- **Step 5** — Split into training (2011–2013) and testing (2014)
+- **Model 1** — Fit, interpret, and test on 2014
+- **Model 2** — Fit, interpret, and test on 2014
+- **Comparison** — Plot actual vs. both forecasts and summarize metrics
+- **Final plot** — Visualize Model 2's three seasonal regression lines
